@@ -16,6 +16,36 @@ export default function UploadDialog({ isOpen, onClose }: { isOpen: boolean; onC
   const [loading, setLoading] = useState<boolean>(false)
   const [elapsedTime, setElapsedTime] = useState<number>(0)
   const [intervalId, setIntervalId] = useState<NodeJS.Timeout | null>(null)
+  const [errorDialog, setErrorDialog] = useState<string | null>(null)
+  const [validationDialog, setValidationDialog] = useState<boolean>(false)
+
+  // Warn user before closing or reloading the page if processing is in progress
+  useEffect(() => {
+
+    
+    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+      if (loading) {
+        event.preventDefault()
+        event.returnValue = "Upload is in progress. Are you sure you want to leave?"
+      }
+    }
+
+    window.addEventListener("beforeunload", handleBeforeUnload)
+
+    return () => {
+      window.removeEventListener("beforeunload", handleBeforeUnload)
+    }
+  }, [loading])
+
+  useEffect(() => {
+    const handleReset = () => {
+      onClose(); // Close the upload dialog
+    };
+  
+    window.addEventListener("resetUploadState", handleReset);
+    return () => window.removeEventListener("resetUploadState", handleReset);
+  }, [onClose]);
+  
 
   // Reset state when dialog opens
   useEffect(() => {
@@ -34,7 +64,7 @@ export default function UploadDialog({ isOpen, onClose }: { isOpen: boolean; onC
     if (e.target.files && e.target.files.length > 0) {
       const selectedFile = e.target.files[0]
       if (selectedFile.type !== "application/pdf") {
-        alert("Only PDF files are allowed.")
+        setErrorDialog("Only PDF files are allowed.")
         return
       }
       setFile(selectedFile)
@@ -53,8 +83,10 @@ export default function UploadDialog({ isOpen, onClose }: { isOpen: boolean; onC
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!file || !title) return alert("Please provide a title and a PDF file.")
-
+    if (!file || !title) {
+      setValidationDialog(true)
+      return
+    }
     setLoading(true)
     setElapsedTime(0)
 
@@ -62,7 +94,7 @@ export default function UploadDialog({ isOpen, onClose }: { isOpen: boolean; onC
     formData.append("file", file)
     formData.append("title", title)
 
-    const startTime = Date.now() // Start timing
+    const startTime = Date.now()
 
     // Start interval to update elapsed time
     const interval = setInterval(() => {
@@ -88,9 +120,18 @@ export default function UploadDialog({ isOpen, onClose }: { isOpen: boolean; onC
     }
   }
 
+  // Handle closing the modal with a confirmation prompt
+  const handleClose = () => {
+    if (loading) {
+      const confirmClose = window.confirm("Upload is in progress. Are you sure you want to close?")
+      if (!confirmClose) return
+    }
+    onClose()
+  }
+
   return (
     <>
-      <Dialog open={isOpen} onOpenChange={!loading ? onClose : undefined}>
+      <Dialog open={isOpen} onOpenChange={handleClose}>
         <DialogOverlay />
         <DialogContent className="max-w-md p-6 bg-white rounded-lg shadow-lg">
           <DialogTitle>
@@ -170,6 +211,31 @@ export default function UploadDialog({ isOpen, onClose }: { isOpen: boolean; onC
           data={uploadedData}
         />
       )}
+
+
+      {/* Error Dialog */}
+      <Dialog open={!!errorDialog} onOpenChange={() => setErrorDialog(null)}>
+        <DialogOverlay />
+        <DialogContent className="max-w-sm p-6 bg-white rounded-lg shadow-lg">
+          <DialogTitle className="text-red-600 font-bold">Error</DialogTitle>
+          <p>{errorDialog}</p>
+          <Button onClick={() => setErrorDialog(null)} className="mt-4">
+            Close
+          </Button>
+        </DialogContent>
+      </Dialog>
+
+      {/* Validation Dialog */}
+      <Dialog open={validationDialog} onOpenChange={() => setValidationDialog(false)}>
+        <DialogOverlay />
+        <DialogContent className="max-w-sm p-6 bg-white rounded-lg shadow-lg">
+          <DialogTitle className="text-yellow-600 font-bold">Warning</DialogTitle>
+          <p>Please provide a title and a PDF file before submitting.</p>
+          <Button onClick={() => setValidationDialog(false)} className="mt-4">
+            OK
+          </Button>
+        </DialogContent>
+      </Dialog>
     </>
   )
 }
