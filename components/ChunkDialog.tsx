@@ -19,7 +19,7 @@ export function ChunkDialog({ documentId }: { documentId: string }) {
   const [chunks, setChunks] = useState<Chunk[]>([]);
   const [loading, setLoading] = useState(false);
   const [selectedChunk, setSelectedChunk] = useState<Chunk | null>(null);
-  const [filter, setFilter] = useState<"all" | "active" | "inactive">("all");
+  const [filter, setFilter] = useState<"all" | "active" | "inactive">("active");
   const [sortOrder, setSortOrder] = useState<"newest" | "oldest">("newest");
 
   async function fetchChunks() {
