@@ -189,7 +189,7 @@ export default function UploadDialog({ isOpen, onClose }: { isOpen: boolean; onC
                 {loading && (
                   <div className="text-center text-sm text-gray-600">
                     <p>Processing... (Elapsed: {elapsedTime}s)</p>
-                    <p className="text-red-500 font-semibold">Please don't close this modal</p>
+                    <p className="text-red-500 font-semibold">Please don&apos;t close this modal</p>
                   </div>
                 )}
 

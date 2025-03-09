@@ -21,7 +21,7 @@ export default function PlaygroundModal() {
     return (
         <>
             <Button className="fixed bottom-4 left-4 z-50" onClick={() => setOpen(true)}>
-                API Playground
+                Playground
             </Button>
             <Dialog open={open} onOpenChange={setOpen}>
                 <DialogContent className="w-[95%] min-w-[95%] p-6 overflow-y-auto max-h-[90vh]">

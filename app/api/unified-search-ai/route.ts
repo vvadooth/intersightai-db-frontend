@@ -61,14 +61,15 @@ async function fetchSearchResults(
     if (useVectorSearch) {
       const vectorIndex = useGoogleSearch ? 1 : 0;
       if (searchResponses[vectorIndex].status === "fulfilled") {
-        vectorResults = await searchResponses[vectorIndex].value.json();
+        // Default to empty array if response is null
+        vectorResults = (await searchResponses[vectorIndex].value.json()) || [];
       } else {
         console.warn("⚠️ Vector Search failed.");
       }
     }
 
     console.log(`✅ Google Results (${googleResults.length})`);
-    console.log(`✅ Vector Results (${vectorResults.length})`);
+    console.log(`✅ Vector Results (${vectorResults?.length ?? 0})`);
 
     return { googleResults, vectorResults };
   } catch (error) {
@@ -119,7 +120,10 @@ Now provide a well-structured answer.`,
       messages,
     });
 
-    console.log("✅ OpenAI Response:", completion.choices[0]?.message?.content || "No response.");
+    console.log(
+      "✅ OpenAI Response:",
+      completion.choices[0]?.message?.content || "No response."
+    );
     return completion.choices[0]?.message?.content || "No response.";
   } catch (error) {
     console.error("❌ OpenAI API Error:", error);
@@ -146,11 +150,22 @@ export async function POST(req: NextRequest) {
     }
 
     console.log(`🔎 Received query: "${query}"`);
-    console.log(`🔢 Parameters - Google Limit: ${resultsLimit}, Vector Limit: ${limit}, Distance: ${distance}`);
-    console.log(`✅ Search Flags - Google: ${useGoogleSearch}, Vector: ${useVectorSearch}`);
+    console.log(
+      `🔢 Parameters - Google Limit: ${resultsLimit}, Vector Limit: ${limit}, Distance: ${distance}`
+    );
+    console.log(
+      `✅ Search Flags - Google: ${useGoogleSearch}, Vector: ${useVectorSearch}`
+    );
 
     console.log("🔎 Fetching search results...");
-    const searchResults = await fetchSearchResults(query, resultsLimit, limit, distance, useGoogleSearch, useVectorSearch);
+    const searchResults = await fetchSearchResults(
+      query,
+      resultsLimit,
+      limit,
+      distance,
+      useGoogleSearch,
+      useVectorSearch
+    );
 
     console.log("🤖 Calling OpenAI...");
     const aiResponse = await getAiResponse(conversation, searchResults);

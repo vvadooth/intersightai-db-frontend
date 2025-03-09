@@ -61,21 +61,33 @@ function RawJson({ data }: { data: any }) {
   );
 }
 
+interface UnifiedResult {
+  id: string;
+  query: string;
+  data: any;
+}
+
 export default function UnifiedSearch() {
-  const [unifiedQuery, setUnifiedQuery] = useState("What are the different licensing tiers in intersight?");
+  const [unifiedQuery, setUnifiedQuery] = useState(
+    "What are the different licensing tiers in intersight?"
+  );
   const [unifiedResultsLimit, setUnifiedResultsLimit] = useState(5);
   const [unifiedLimit, setUnifiedLimit] = useState(5);
   const [unifiedDistance, setUnifiedDistance] = useState(0.4);
   const [useGoogleSearch, setUseGoogleSearch] = useState(true);
   const [useVectorSearch, setUseVectorSearch] = useState(true);
   const [conversation, setConversation] = useState<Message[]>([]);
-  const [unifiedResult, setUnifiedResult] = useState<any>(null);
+  // Store each unified search result with its query
+  const [unifiedResults, setUnifiedResults] = useState<UnifiedResult[]>([]);
+  // State to control which accordion item is open
+  const [openAccordion, setOpenAccordion] = useState<string | undefined>(undefined);
   const [unifiedLoading, setUnifiedLoading] = useState(false);
 
   const handleUnifiedSearch = async (e: React.FormEvent) => {
     e.preventDefault();
     setUnifiedLoading(true);
-    setUnifiedResult(null);
+
+    // Add user message to conversation
     const userMessage: Message = { role: "user", content: unifiedQuery };
     const updatedConversation = [...conversation, userMessage];
     setConversation(updatedConversation);
@@ -95,14 +107,31 @@ export default function UnifiedSearch() {
         }),
       });
       const data = await res.json();
-      setUnifiedResult(data);
+
+      // Create a new result object with a unique ID
+      const newResult: UnifiedResult = {
+        id: new Date().getTime().toString(),
+        query: unifiedQuery,
+        data,
+      };
+      setUnifiedResults((prev) => [...prev, newResult]);
+      // Set the newly added result as the open accordion item
+      setOpenAccordion(newResult.id);
+
+      // Append assistant's answer to the conversation
       const assistantMessage: Message = {
         role: "assistant",
         content: data.aiResponse || "No response.",
       };
       setConversation((prev) => [...prev, assistantMessage]);
     } catch (error) {
-      setUnifiedResult({ error: "Error calling API" });
+      const errorResult: UnifiedResult = {
+        id: new Date().getTime().toString(),
+        query: unifiedQuery,
+        data: { error: "Error calling API" },
+      };
+      setUnifiedResults((prev) => [...prev, errorResult]);
+      setOpenAccordion(errorResult.id);
     }
     setUnifiedLoading(false);
     setUnifiedQuery("");
@@ -173,9 +202,11 @@ export default function UnifiedSearch() {
           {unifiedLoading ? "Loading..." : "Test Unified Search"}
         </Button>
       </form>
+
+      {/* Display conversation messages */}
       {conversation.length > 0 && (
         <div className="mt-4 max-w-full text-left overflow-auto p-4 border rounded space-y-4 max-h-96">
-        {conversation.map((msg, idx) => (
+          {conversation.map((msg, idx) => (
             <div key={idx} className="flex items-start space-x-3">
               {msg.role === "user" ? (
                 <User className="h-6 w-6 text-blue-500 flex-shrink-0" />
@@ -189,9 +220,33 @@ export default function UnifiedSearch() {
           ))}
         </div>
       )}
-      {unifiedResult && (
-        <div className="mt-4 max-w-full text-left overflow-y-auto whitespace-pre-wrap break-words p-4 border rounded max-h-96">
-        <RawJson data={unifiedResult} />
+
+      {/* Render unified results as accordion items */}
+      {unifiedResults.length > 0 && (
+        <div className="mt-4">
+          <Accordion
+            type="single"
+            collapsible
+            value={openAccordion}
+            onValueChange={setOpenAccordion}
+          >
+            {unifiedResults.map((resultItem) => (
+              <AccordionItem key={resultItem.id} value={resultItem.id}>
+                <AccordionTrigger>
+                  <span>
+                    {`Query: ${
+                      resultItem.query.length > 50
+                        ? resultItem.query.slice(0, 50) + "..."
+                        : resultItem.query
+                    }`}
+                  </span>
+                </AccordionTrigger>
+                <AccordionContent>
+                  <RawJson data={resultItem.data} />
+                </AccordionContent>
+              </AccordionItem>
+            ))}
+          </Accordion>
         </div>
       )}
     </TabsContent>
