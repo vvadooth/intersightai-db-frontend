@@ -6,6 +6,7 @@ import DocumentTable from "@/components/DocumentsTable";
 import UploadDialog from "@/components/UploadDialog";
 import AddUrlDialog from "@/components/AddUrlDialog";
 import { Button } from "@/components/ui/button";
+import PlaygroundModal from "@/components/PlaygroundModal"; 
 
 export default function Home() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -30,9 +31,7 @@ export default function Home() {
             <h2 className="text-xl font-bold">Documents</h2>
             <div className="flex space-x-2">
               <Button onClick={() => setIsUploadDialogOpen(true)}>Upload PDF</Button>
-              <Button onClick={() => setIsUrlDialogOpen(true)}>
-                Add URL
-              </Button>
+              <Button onClick={() => setIsUrlDialogOpen(true)}>Add URL</Button>
             </div>
           </div>
           <DocumentTable />
@@ -40,6 +39,9 @@ export default function Home() {
       )}
       <UploadDialog isOpen={isUploadDialogOpen} onClose={() => setIsUploadDialogOpen(false)} />
       <AddUrlDialog isOpen={isUrlDialogOpen} onClose={() => setIsUrlDialogOpen(false)} />
+
+      {/* Render the PlaygroundModal; its own button is fixed in the bottom left */}
+      <PlaygroundModal />
     </div>
   );
 }

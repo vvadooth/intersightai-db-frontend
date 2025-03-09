@@ -9,12 +9,28 @@ import URLDetailsDialog from "./URLDetailsDialog";
 import { Loader2 } from "lucide-react"; // 🔄 Loading spinner
 import { toast } from "sonner"; // ✅ Import Sonner toast system
 
+
+const ALLOWED_DOMAINS = ["intersight.com"];
+
+
 export default function AddUrlDialog({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
     const [url, setUrl] = useState("");
     const [title, setTitle] = useState("");
     const [isValidUrl, setIsValidUrl] = useState(true);
     const [extractedData, setExtractedData] = useState<any>(null);
     const [loading, setLoading] = useState(false);
+    const [isAllowedDomain, setIsAllowedDomain] = useState(true);
+
+
+        // 🔍 Check if the domain is allowed
+        const isDomainAllowed = (inputUrl: string) => {
+            try {
+                const urlObj = new URL(inputUrl);
+                return ALLOWED_DOMAINS.some(domain => urlObj.hostname.endsWith(domain));
+            } catch (error) {
+                return false; // Invalid URLs automatically fail
+            }
+        };
 
     // Remove URL fragment (#...)
     const handleUrlChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -30,6 +46,7 @@ export default function AddUrlDialog({ isOpen, onClose }: { isOpen: boolean; onC
 
         setUrl(inputUrl);
         setIsValidUrl(validateUrl(inputUrl) || inputUrl === "");
+        setIsAllowedDomain(isDomainAllowed(inputUrl));
     };
 
     const handleTitleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -62,6 +79,11 @@ export default function AddUrlDialog({ isOpen, onClose }: { isOpen: boolean; onC
         e.preventDefault();
         if (!validateUrl(url)) {
             setIsValidUrl(false);
+            return;
+        }
+        if (!isDomainAllowed(url)) {
+            setIsAllowedDomain(false);
+            toast.error("🚫 This domain is not allowed.");
             return;
         }
         if (!title.trim()) {
