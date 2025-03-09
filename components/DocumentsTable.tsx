@@ -18,6 +18,7 @@ interface Document {
     source: string;
     ingested_at: string;
     metadata: Record<string, any>;
+    chunks?: string[];
 }
 
 export default function DocumentTable() {
@@ -28,19 +29,37 @@ export default function DocumentTable() {
     const [sortOrder, setSortOrder] = useState<"desc" | "asc">("desc"); // Default: Latest → Oldest
     const [isDeleting, setIsDeleting] = useState(false);
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+    const [searchQuery, setSearchQuery] = useState(""); 
 
     useEffect(() => {
-        fetchDocuments();
+        fetchDocumentsWithChunks();
     }, []);
 
-    async function fetchDocuments() {
+    async function fetchDocumentsWithChunks() {
         setLoading(true);
         try {
             const res = await fetch("/api/documents");
             if (!res.ok) throw new Error("Failed to fetch documents");
-            const docs = await res.json();
-            setData(docs);
-            toast.success("📄 Documents loaded successfully!");
+            let docs = await res.json();
+
+            // ✅ Fetch chunks for all documents in parallel
+            const enrichedDocs = await Promise.all(
+                docs.map(async (doc: Document) => {
+                    try {
+                        const chunkRes = await fetch(`/api/documents/${doc.id}/history`);
+                        if (chunkRes.ok) {
+                            const chunks = await chunkRes.json();
+                            return { ...doc, chunks: chunks.map((c: { chunk: string }) => c.chunk) };
+                        }
+                    } catch (error) {
+                        console.error(`Failed to fetch chunks for doc ${doc.id}`, error);
+                    }
+                    return { ...doc, chunks: [] }; // Default empty chunks if request fails
+                })
+            );
+
+            setData(enrichedDocs);
+            toast.success("📄 Documents & chunks loaded successfully!");
         } catch (error) {
             toast.error("❌ Error fetching documents.");
         } finally {
@@ -79,9 +98,12 @@ export default function DocumentTable() {
 
     // 🔍 Filtering logic
     const filteredData = data.filter((doc) => {
-        const sourceMatch = doc.source.toLowerCase().includes(filterText.toLowerCase());
-        const metadataMatch = JSON.stringify(doc.metadata).toLowerCase().includes(filterText.toLowerCase());
-        return sourceMatch || metadataMatch;
+        const searchLower = searchQuery.toLowerCase();
+        const sourceMatch = doc.source.toLowerCase().includes(searchLower);
+        const metadataMatch = JSON.stringify(doc.metadata).toLowerCase().includes(searchLower);
+        const chunkMatch = doc.chunks?.some((chunk) => chunk.toLowerCase().includes(searchLower)) || false;
+
+        return sourceMatch || metadataMatch || chunkMatch;
     });
 
     // 🗂️ Sort Data by Ingested Date
@@ -99,15 +121,15 @@ export default function DocumentTable() {
                     <Search className="w-5 h-5 text-gray-500" />
                     <Input
                         type="text"
-                        placeholder="Search documents..."
-                        value={filterText}
-                        onChange={(e) => setFilterText(e.target.value)}
-                        className="w-full border-none focus:ring-0"
+                        placeholder="Search documents & chunks..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="pl-10 w-full border-gray-300 focus:ring-blue-500 focus:border-blue-500"
                     />
                 </div>
 
                 {/* 🔄 Reload Button */}
-                <Button onClick={fetchDocuments} disabled={loading} variant="outline">
+                <Button onClick={fetchDocumentsWithChunks} disabled={loading} variant="outline">
                     <RefreshCcw className={`w-5 h-5 ${loading ? "animate-spin" : ""}`} />
                 </Button>
             </div>
@@ -122,6 +144,7 @@ export default function DocumentTable() {
                 </div>
             )}
 
+<div className="h-[60vh] overflow-y-auto border rounded-md">
             {/* 📄 Table */}
             <Table>
                 <TableHeader>
@@ -246,7 +269,7 @@ export default function DocumentTable() {
                     )}
                 </TableBody>
             </Table>
-
+            </div>
             {/* Delete Confirmation Dialog */}
             <DeleteConfirmationDialog
                 isOpen={deleteDialogOpen}

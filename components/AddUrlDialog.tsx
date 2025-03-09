@@ -1,16 +1,16 @@
 "use client";
 
 import { useState } from "react";
-import { Dialog, DialogOverlay, DialogContent, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogDescription, DialogOverlay, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 import URLDetailsDialog from "./URLDetailsDialog";
 import { Loader2 } from "lucide-react"; // 🔄 Loading spinner
 import { toast } from "sonner"; // ✅ Import Sonner toast system
 
 
 const ALLOWED_DOMAINS = ["intersight.com"];
+const YOUTUBE_REGEX = /(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/;
 
 
 export default function AddUrlDialog({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
@@ -20,6 +20,7 @@ export default function AddUrlDialog({ isOpen, onClose }: { isOpen: boolean; onC
     const [extractedData, setExtractedData] = useState<any>(null);
     const [loading, setLoading] = useState(false);
     const [isAllowedDomain, setIsAllowedDomain] = useState(true);
+    const [isYouTube, setIsYouTube] = useState(false);
 
 
         // 🔍 Check if the domain is allowed
@@ -38,15 +39,14 @@ export default function AddUrlDialog({ isOpen, onClose }: { isOpen: boolean; onC
 
         try {
             const urlObj = new URL(inputUrl);
-            urlObj.hash = ""; // Remove fragment
+            urlObj.hash = "";
             inputUrl = urlObj.toString();
-        } catch (error) {
-            // If invalid URL, just use raw input (validation will handle errors)
-        }
+        } catch (error) {}
 
         setUrl(inputUrl);
         setIsValidUrl(validateUrl(inputUrl) || inputUrl === "");
         setIsAllowedDomain(isDomainAllowed(inputUrl));
+        setIsYouTube(YOUTUBE_REGEX.test(inputUrl));
     };
 
     const handleTitleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -81,13 +81,17 @@ export default function AddUrlDialog({ isOpen, onClose }: { isOpen: boolean; onC
             setIsValidUrl(false);
             return;
         }
-        if (!isDomainAllowed(url)) {
+
+        if (!isYouTube && !isDomainAllowed(url)) {
             setIsAllowedDomain(false);
             toast.error("🚫 This domain is not allowed.");
             return;
         }
-        if (!title.trim()) {
-            return; // Prevent submission if the title is empty
+
+        // ✅ Skip title validation for YouTube videos
+        if (!title.trim() && !isYouTube) {
+            toast.error("⚠️ Title is required for non-YouTube URLs.");
+            return;
         }
 
         setLoading(true);
@@ -112,17 +116,21 @@ export default function AddUrlDialog({ isOpen, onClose }: { isOpen: boolean; onC
                 }
             }
 
+            let apiUrl = isYouTube ? "/api/add-yt-video" : "/api/add-url";
+            let payload = isYouTube ? { video_url: url } : { url, title };
+
             // 🚀 Step 2: Proceed with document submission
-            const res = await fetch("/api/add-url", {
+            const res = await fetch(apiUrl, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ url, title }),
+                body: JSON.stringify(payload),
             });
 
             const data = await res.json();
             if (!data) throw new Error("Invalid response from API.");
 
             toast.success("Document has been successfully ingested.");
+            toast.success(isYouTube ? "YouTube transcript extracted successfully." : "Document successfully ingested.");
 
             setExtractedData(data);
         } catch (error) {
@@ -156,7 +164,7 @@ export default function AddUrlDialog({ isOpen, onClose }: { isOpen: boolean; onC
                 <DialogOverlay className="bg-black/30" />
                 <DialogContent className="max-w-md p-6 bg-white rounded-lg shadow-lg border">
                     <DialogTitle className="text-xl font-bold text-gray-900">Add URL</DialogTitle>
-
+                    <DialogDescription> We accept Intersight.com and Youtube.com URLs</DialogDescription>
                     <form onSubmit={handleSubmit} className="mt-4 space-y-4">
                         {/* URL Input Field */}
                         <label htmlFor="url-input" className="block text-sm font-medium text-gray-700">
@@ -173,25 +181,29 @@ export default function AddUrlDialog({ isOpen, onClose }: { isOpen: boolean; onC
                         />
                         {!isValidUrl && <p className="text-red-500 text-xs font-medium">⚠️ Invalid URL format</p>}
 
-                        {/* Title Input Field (Required) */}
-                        <label htmlFor="title-input" className="block text-sm font-medium text-gray-700">
-                            Title <span className="text-red-500">*</span>
-                        </label>
-                        <Input
-                            id="title-input"
-                            type="text"
-                            placeholder="Enter title"
-                            value={title}
-                            onChange={handleTitleChange}
-                            className={`border p-2 rounded-md w-full ${!title.trim() ? "border-red-500" : "border-gray-300"
-                                } focus:outline-none focus:ring-2 focus:ring-blue-500`}
-                        />
-                        {!title.trim() && <p className="text-red-500 text-xs font-medium">⚠️ Title is required</p>}
+{/* Title Input Field (Hidden for YouTube) */}
+{!isYouTube && (
+                            <>
+                                <label htmlFor="title-input" className="block text-sm font-medium text-gray-700">
+                                    Title <span className="text-red-500">*</span>
+                                </label>
+                                <Input
+                                    id="title-input"
+                                    type="text"
+                                    placeholder="Enter title"
+                                    value={title}
+                                    onChange={handleTitleChange}
+                                    className={`border p-2 rounded-md w-full ${!title.trim() ? "border-red-500" : "border-gray-300"
+                                        } focus:outline-none focus:ring-2 focus:ring-blue-500`}
+                                />
+                                {!title.trim() && <p className="text-red-500 text-xs font-medium">⚠️ Title is required</p>}
+                            </>
+                        )}
 
                         {/* Buttons */}
                         <div className="flex justify-end space-x-2">
-                            <Button type="submit" disabled={!url || !isValidUrl || !title.trim() || loading} className="flex items-center">
-                                {loading ? (
+                        <Button type="submit" disabled={!url || !isValidUrl || (loading && !isYouTube)} className="flex items-center">
+                        {loading ? (
                                     <>
                                         <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                                         Processing...

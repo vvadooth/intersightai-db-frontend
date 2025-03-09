@@ -2,9 +2,10 @@
 
 import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { ChevronDown } from "lucide-react";
+import { Search, ChevronDown } from "lucide-react";
 
 interface Chunk {
   id: number;
@@ -21,6 +22,7 @@ export function ChunkDialog({ documentId }: { documentId: string }) {
   const [selectedChunk, setSelectedChunk] = useState<Chunk | null>(null);
   const [filter, setFilter] = useState<"all" | "active" | "inactive">("active");
   const [sortOrder, setSortOrder] = useState<"newest" | "oldest">("newest");
+  const [searchQuery, setSearchQuery] = useState("");
 
   async function fetchChunks() {
     setLoading(true);
@@ -37,12 +39,17 @@ export function ChunkDialog({ documentId }: { documentId: string }) {
     }
   }
 
-  // ✅ Apply filters
+  // ✅ Apply filters and search query
   const filteredChunks = chunks
     .filter((chunk) => {
-      if (filter === "active") return chunk.active;
-      if (filter === "inactive") return !chunk.active;
-      return true;
+      const matchesFilter = 
+        filter === "active" ? chunk.active 
+        : filter === "inactive" ? !chunk.active 
+        : true;
+
+      const matchesSearch = chunk.chunk.toLowerCase().includes(searchQuery.toLowerCase());
+      
+      return matchesFilter && matchesSearch;
     })
     .sort((a, b) => {
       return sortOrder === "newest"
@@ -60,9 +67,20 @@ export function ChunkDialog({ documentId }: { documentId: string }) {
           <DialogTitle>Document Chunks</DialogTitle>
         </DialogHeader>
 
+        {/* ✅ Search Input */}
+        <div className="relative mb-3">
+          <Search className="absolute left-3 top-3 text-gray-500 w-5 h-5" />
+          <Input
+            type="text"
+            placeholder="Search chunks..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-10 w-full border-gray-300 focus:ring-blue-500 focus:border-blue-500"
+          />
+        </div>
+
         {/* ✅ Filters & Sorting */}
         <div className="flex justify-between items-center mb-2">
-          {/* 🔍 Status Filter */}
           <div className="flex space-x-2">
             <Button
               variant={filter === "all" ? "default" : "outline"}
@@ -109,13 +127,8 @@ export function ChunkDialog({ documentId }: { documentId: string }) {
                       className="p-3 border rounded-md cursor-pointer hover:bg-gray-100 transition-all flex items-center space-x-3"
                       onClick={() => setSelectedChunk(chunk)}
                     >
-                      {/* ✅ Status Indicator */}
                       <div className={`w-3 h-3 rounded-full ${chunk.active ? "bg-green-500" : "bg-red-500"}`} />
-
-                      {/* ✅ Truncated Chunk Text */}
                       <p className="font-mono truncate flex-1">{chunk.chunk}</p>
-
-                      {/* ✅ Created At Timestamp */}
                       <p className="text-xs text-gray-500 whitespace-nowrap">
                         {new Date(chunk.created_at).toLocaleString()}
                       </p>
