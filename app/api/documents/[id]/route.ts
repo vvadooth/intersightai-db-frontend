@@ -8,16 +8,20 @@ const headers = {
   Authorization: `Bearer ${SECURITY_TOKEN}`,
 };
 
+// Define the params type as a Promise
+type Params = Promise<{ id: string }>;
+
 // 🚀 **GET a single document by ID**
-export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
-  console.log(`🔍 Fetching document with ID: ${params.id}`);
+export async function GET(req: NextRequest, { params }: { params: Params }) {
+  const { id } = await params; // Await the Promise to get the id
+  console.log(`🔍 Fetching document with ID: ${id}`);
 
   if (!DOCUMENT_DB_URL || !SECURITY_TOKEN) {
     return NextResponse.json({ error: "Missing database configuration" }, { status: 500 });
   }
 
   try {
-    const response = await fetch(`${DOCUMENT_DB_URL}/documents/${params.id}`, { method: "GET", headers });
+    const response = await fetch(`${DOCUMENT_DB_URL}/documents/${id}`, { method: "GET", headers });
     if (!response.ok) throw new Error(`❌ Failed to fetch document: ${response.statusText}`);
 
     return NextResponse.json(await response.json());
@@ -27,8 +31,9 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
 }
 
 // 🚀 **PUT - Update a document by ID**
-export async function PUT(req: NextRequest, { params }: { params: { id: string } }) {
-  console.log(`📝 Updating document with ID: ${params.id}`);
+export async function PUT(req: NextRequest, { params }: { params: Params }) {
+  const { id } = await params; // Await the Promise to get the id
+  console.log(`📝 Updating document with ID: ${id}`);
 
   if (!DOCUMENT_DB_URL || !SECURITY_TOKEN) {
     return NextResponse.json({ error: "Missing database configuration" }, { status: 500 });
@@ -36,7 +41,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
 
   try {
     const body = await req.json();
-    const response = await fetch(`${DOCUMENT_DB_URL}/documents/${params.id}`, {
+    const response = await fetch(`${DOCUMENT_DB_URL}/documents/${id}`, {
       method: "PUT",
       headers,
       body: JSON.stringify(body),
@@ -50,15 +55,16 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
 }
 
 // 🚀 **DELETE - Remove a document by ID**
-export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
-  console.log(`🗑️ Deleting document with ID: ${params.id}`);
+export async function DELETE(req: NextRequest, { params }: { params: Params }) {
+  const { id } = await params; // Await the Promise to get the id
+  console.log(`🗑️ Deleting document with ID: ${id}`);
 
   if (!DOCUMENT_DB_URL || !SECURITY_TOKEN) {
     return NextResponse.json({ error: "Missing database configuration" }, { status: 500 });
   }
 
   try {
-    const response = await fetch(`${DOCUMENT_DB_URL}/documents/${params.id}`, { method: "DELETE", headers });
+    const response = await fetch(`${DOCUMENT_DB_URL}/documents/${id}`, { method: "DELETE", headers });
 
     if (!response.ok) throw new Error(`❌ Failed to delete document: ${response.statusText}`);
     return NextResponse.json({ message: "Document deleted successfully" });

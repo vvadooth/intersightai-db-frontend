@@ -1,10 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 
+// Define the params type as a Promise
+type Params = Promise<{ id: string }>;
+
+// Update the GET handler to handle async params
 export async function GET(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Params } // Use the Promise-based type
 ) {
-  console.log(`🔍 Fetching document history for ID: ${params.id}`);
+  const { id } = await params; // Await the Promise to get the id
+  console.log(`🔍 Fetching document history for ID: ${id}`);
 
   const DOCUMENT_DB_URL = process.env.INTERSIGHTAI_DB_URL;
   const SECURITY_TOKEN = process.env.SECURITY_TOKEN;
@@ -18,7 +23,7 @@ export async function GET(
   }
 
   try {
-    const url = `${DOCUMENT_DB_URL}/documents/${params.id}/history`;
+    const url = `${DOCUMENT_DB_URL}/documents/${id}/history`;
     console.log(`🌍 Making request to: ${url}`);
 
     const response = await fetch(url, {

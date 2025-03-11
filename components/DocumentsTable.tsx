@@ -40,7 +40,7 @@ export default function DocumentTable() {
         try {
             const res = await fetch("/api/documents");
             if (!res.ok) throw new Error("Failed to fetch documents");
-            let docs = await res.json();
+            const docs = await res.json();
 
             // ✅ Fetch chunks for all documents in parallel
             const enrichedDocs = await Promise.all(

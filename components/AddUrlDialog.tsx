@@ -116,8 +116,8 @@ export default function AddUrlDialog({ isOpen, onClose }: { isOpen: boolean; onC
                 }
             }
 
-            let apiUrl = isYouTube ? "/api/add-yt-video" : "/api/add-url";
-            let payload = isYouTube ? { video_url: url } : { url, title };
+            const apiUrl = isYouTube ? "/api/add-yt-video" : "/api/add-url";
+            const payload = isYouTube ? { video_url: url } : { url, title };
 
             // 🚀 Step 2: Proceed with document submission
             const res = await fetch(apiUrl, {

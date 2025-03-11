@@ -58,7 +58,7 @@ export default function UploadDialog({ isOpen, onClose }: { isOpen: boolean; onC
       setElapsedTime(0)
       if (intervalId) clearInterval(intervalId)
     }
-  }, [isOpen])
+  }, [isOpen, intervalId])
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
