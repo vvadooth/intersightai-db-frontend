@@ -4,6 +4,9 @@ import { useState, useEffect } from "react";
 import { Dialog, DialogOverlay, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { toast } from "sonner";
 
 export default function URLDetailsDialog({
     isOpen,
@@ -25,6 +28,10 @@ export default function URLDetailsDialog({
 }) {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [exitDialog, setExitDialog] = useState(false);
+    const [editedTitle, setEditedTitle] = useState(data.metadata.title);
+    const [editedContent, setEditedContent] = useState(data.content);
+    const [editedFileType, setEditedFileType] = useState(data.metadata.file_type);
+    const [editedConfidentiality, setEditedConfidentiality] = useState(data.metadata.confidentiality);
 
     // Prevent closing the tab while submitting
     useEffect(() => {
@@ -49,8 +56,13 @@ export default function URLDetailsDialog({
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                     source: data.source,
-                    content: data.content,
-                    metadata: data.metadata,
+                    content: editedContent,
+                    metadata: {
+                        title: editedTitle,
+                        size: editedContent.length,
+                        file_type: editedFileType,
+                        confidentiality: editedConfidentiality,
+                    },
                 }),
             });
 
@@ -61,16 +73,17 @@ export default function URLDetailsDialog({
             }
 
             console.log("✅ URL submitted successfully!");
+            toast.success("Document submitted successfully!");
 
             // After successful submission, close all dialogs.
             onClose();
         } catch (error) {
             console.error("❌ Error submitting URL:", error);
+            toast.error("Failed to submit document.");
         } finally {
             setIsSubmitting(false);
         }
     };
-
 
     return (
         <>
@@ -82,19 +95,59 @@ export default function URLDetailsDialog({
                     </DialogTitle>
 
                     <div className="space-y-4">
-                        <h2 className="text-xl font-bold max-w-md break-words">
-                            {data.metadata.title}</h2>
-                        <p className="text-sm text-gray-600">File Type: {data.metadata.file_type}</p>
-                        <p className="text-sm text-gray-600">Size: {data.metadata.size} characters</p>
-                        <p className="text-sm text-gray-600">Confidentiality: {data.metadata.confidentiality}</p>
-
-                        <div className="border-t pt-4">
-                            <h3 className="font-semibold">Extracted Content</h3>
-                            <p className="text-sm text-gray-800 h-32 overflow-auto max-w-md">
-                                {data.content || "No content extracted."}
-                            </p>
+                        {/* Editable Title */}
+                        <div>
+                            <label className="text-sm font-medium text-gray-700">Title</label>
+                            <Input
+                                value={editedTitle}
+                                onChange={(e) => setEditedTitle(e.target.value)}
+                                className="border p-2 rounded-md w-full"
+                            />
                         </div>
 
+                        {/* Editable File Type */}
+                        <div>
+                            <label className="text-sm font-medium text-gray-700">File Type</label>
+                            <select
+                                value={editedFileType}
+                                onChange={(e) => setEditedFileType(e.target.value)}
+                                className="border p-2 rounded-md w-full"
+                            >
+                                <option value="url">URL</option>
+                                <option value="pdf">PDF</option>
+                                <option value="video">Video</option>
+                                <option value="text">Text</option>
+                            </select>
+                        </div>
+
+                        {/* Live Character Count */}
+                        <p className="text-sm text-gray-600">Size: {editedContent.length} characters</p>
+
+                        {/* Editable Confidentiality */}
+                        <div>
+                            <label className="text-sm font-medium text-gray-700">Confidentiality</label>
+                            <select
+                                value={editedConfidentiality}
+                                onChange={(e) => setEditedConfidentiality(e.target.value)}
+                                className="border p-2 rounded-md w-full"
+                            >
+                                <option value="public">Public</option>
+                                <option value="internal">Internal</option>
+                                <option value="confidential">Confidential</option>
+                            </select>
+                        </div>
+
+                        {/* Editable Extracted Content */}
+                        <div className="border-t pt-4">
+                            <h3 className="font-semibold">Extracted Content</h3>
+                            <Textarea
+                                value={editedContent}
+                                onChange={(e) => setEditedContent(e.target.value)}
+                                className="w-full p-2 border rounded-md h-32 resize-none"
+                            />
+                        </div>
+
+                        {/* Source Link */}
                         <div className="border-t pt-4">
                             <h3 className="font-semibold">Source</h3>
                             <a href={data.source} target="_blank" rel="noopener noreferrer" className="text-blue-500 underline">
@@ -102,6 +155,7 @@ export default function URLDetailsDialog({
                             </a>
                         </div>
 
+                        {/* Submit Button */}
                         <div className="flex justify-end">
                             <Button onClick={handleSubmit} disabled={isSubmitting}>
                                 {isSubmitting ? "Submitting..." : "Submit"}

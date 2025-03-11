@@ -73,7 +73,7 @@ export default function UnifiedSearch() {
   );
   const [unifiedResultsLimit, setUnifiedResultsLimit] = useState(5);
   const [unifiedLimit, setUnifiedLimit] = useState(5);
-  const [unifiedDistance, setUnifiedDistance] = useState(0.4);
+  const [unifiedDistance, setUnifiedDistance] = useState(1.2);
   const [useGoogleSearch, setUseGoogleSearch] = useState(true);
   const [useVectorSearch, setUseVectorSearch] = useState(true);
   const [conversation, setConversation] = useState<Message[]>([]);
