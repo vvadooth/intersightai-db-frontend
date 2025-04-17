@@ -3,7 +3,7 @@ import OpenAI from "openai";
 
 // Load API keys from environment variables
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
-const BASE_URL = process.env.BASE_URL || "http://localhost:3002";
+const BASE_URL = process.env.BASE_URL || "http://localhost:3001";
 
 if (!OPENAI_API_KEY) {
   throw new Error("❌ Missing OpenAI API key in .env file");
