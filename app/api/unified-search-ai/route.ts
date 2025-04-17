@@ -52,19 +52,22 @@ async function fetchSearchResults(
     let vectorResults: any[] = [];
 
     if (useGoogleSearch && searchResponses[0].status === "fulfilled") {
-      const jsonData = await searchResponses[0].value.json();
-      googleResults = jsonData?.searchResults || [];
-    } else if (useGoogleSearch) {
-      console.warn("⚠️ Google Search failed.");
+      try {
+        const jsonData = await searchResponses[0].value.json();
+        googleResults = jsonData?.searchResults || [];
+      } catch (err) {
+        console.warn("⚠️ Google Search returned invalid JSON.");
+      }
     }
 
     if (useVectorSearch) {
       const vectorIndex = useGoogleSearch ? 1 : 0;
       if (searchResponses[vectorIndex].status === "fulfilled") {
-        // Default to empty array if response is null
-        vectorResults = (await searchResponses[vectorIndex].value.json()) || [];
-      } else {
-        console.warn("⚠️ Vector Search failed.");
+        try {
+          vectorResults = await searchResponses[vectorIndex].value.json();
+        } catch (err) {
+          console.warn("⚠️ Vector Search returned invalid JSON.");
+        }
       }
     }
 
