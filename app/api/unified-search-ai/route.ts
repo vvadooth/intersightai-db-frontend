@@ -12,6 +12,17 @@ if (!OPENAI_API_KEY) {
 // Initialize OpenAI client
 const openai = new OpenAI({ apiKey: OPENAI_API_KEY });
 
+
+async function safeParseJson(response: { text: () => any; }) {
+  try {
+    const text = await response.text();
+    return JSON.parse(text);
+  } catch (err) {
+    console.warn("⚠️ Invalid JSON from search API");
+    return null;
+  }
+}
+
 // 🚀 **Fetch Search Results from Google & Vector DB**
 async function fetchSearchResults(
   query: string,
@@ -51,22 +62,23 @@ async function fetchSearchResults(
     let googleResults: any[] = [];
     let vectorResults: any[] = [];
 
-    if (useGoogleSearch && searchResponses[0].status === "fulfilled") {
+    if (useGoogleSearch && searchResponses[0].status === 'fulfilled') {
       try {
         const jsonData = await searchResponses[0].value.json();
         googleResults = jsonData?.searchResults || [];
       } catch (err) {
-        console.warn("⚠️ Google Search returned invalid JSON.");
+        console.warn('⚠️ Google Search returned invalid JSON.');
       }
     }
-
+    
     if (useVectorSearch) {
       const vectorIndex = useGoogleSearch ? 1 : 0;
-      if (searchResponses[vectorIndex].status === "fulfilled") {
+      const vectorResp = searchResponses[vectorIndex];
+      if (vectorResp.status === 'fulfilled') {
         try {
-          vectorResults = await searchResponses[vectorIndex].value.json();
+          vectorResults = await vectorResp.value.json();
         } catch (err) {
-          console.warn("⚠️ Vector Search returned invalid JSON.");
+          console.warn('⚠️ Vector Search returned invalid JSON.');
         }
       }
     }
