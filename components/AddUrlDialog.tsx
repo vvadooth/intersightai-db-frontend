@@ -9,7 +9,7 @@ import { Loader2 } from "lucide-react"; // 🔄 Loading spinner
 import { toast } from "sonner"; // ✅ Import Sonner toast system
 
 
-const ALLOWED_DOMAINS = ["intersight.com"];
+const ALLOWED_DOMAINS = ["intersight.com", "cisco.com"];
 const YOUTUBE_REGEX = /(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/;
 
 
@@ -164,7 +164,7 @@ export default function AddUrlDialog({ isOpen, onClose }: { isOpen: boolean; onC
                 <DialogOverlay className="bg-black/30" />
                 <DialogContent className="max-w-md p-6 bg-white rounded-lg shadow-lg border">
                     <DialogTitle className="text-xl font-bold text-gray-900">Add URL</DialogTitle>
-                    <DialogDescription> We accept Intersight.com and Youtube.com URLs</DialogDescription>
+                    <DialogDescription> We accept Intersight, Cisco, and Youtube URLs</DialogDescription>
                     <form onSubmit={handleSubmit} className="mt-4 space-y-4">
                         {/* URL Input Field */}
                         <label htmlFor="url-input" className="block text-sm font-medium text-gray-700">
