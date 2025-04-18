@@ -149,6 +149,7 @@ async function getAiResponse(conversation: any[], searchResults: any, vectorCont
 - **Never include profanity or inappropriate content**.
 - **Relate everything to Intersight**.
 - Do not give any fake or mock links, only refer to actual links/sources and/or subject matter expert answers which will be the ones from Similar Questions from Vector Search.
+- Only use the content from the search results to guide you in getting your answers, don't say anything false or create in your imagination. We deal in truth and facts here. It's okay to say you don't know rather than come up with something inaccurate. 
 
 ## 🛠 **Response Formatting**
 1. Use **Markdown**:
