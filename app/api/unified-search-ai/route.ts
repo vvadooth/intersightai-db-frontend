@@ -160,9 +160,6 @@ async function getAiResponse(conversation: any[], searchResults: any, vectorCont
 2. **Stay on topic**:
    - Ignore non-Cisco-related queries.
 
-## 🧠 Similar Questions from Vector Search
-${vectorContext.map((item, i) => `### Q${i + 1}: ${item.question}\nGolden Truth: ${item.golden_truth}`).join('\n\n')}
-
 ## 🔎 Additional Search Results
 - **Google Search Results:** ${JSON.stringify(searchResults.googleResults, null, 2)}
 - **Vector Database Results:** ${JSON.stringify(searchResults.vectorResults, null, 2)}
@@ -238,3 +235,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Failed to process request" }, { status: 500 });
   }
 }
+
+
+
+// ## 🧠 Similar Questions from Vector Search
+// ${vectorContext.map((item, i) => `### Q${i + 1}: ${item.question}\nGolden Truth: ${item.golden_truth}`).join('\n\n')}
