@@ -25,10 +25,13 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Query is required" }, { status: 400 });
     }
 
+    const safeQuery = query.replace(/[^\x00-\xFF]/g, '');
+
+
     // Call the Go backend to execute search
     const response = await fetch(`${SEARCH_BACKEND_URL}/search?limit=${limit}&distance=${distance}`, {
       method: "GET",
-      headers: { ...headers, "X-Search-Query": query },
+      headers: { ...headers, "X-Search-Query": safeQuery },
     });
 
     if (!response.ok) {
