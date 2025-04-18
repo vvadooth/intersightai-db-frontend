@@ -1,13 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import OpenAI from "openai";
-import { Pool } from 'pg';
 
 // Load API keys from environment variables
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 const BASE_URL = process.env.BASE_URL || "http://localhost:3001";
-const pool = new Pool({
-  connectionString: process.env.INTERSIGHTAI_DOC_USE_CASE_DATABASE_URL,
-});
+
 
 if (!OPENAI_API_KEY) {
   throw new Error("❌ Missing OpenAI API key in .env file");
@@ -17,7 +14,7 @@ if (!OPENAI_API_KEY) {
 const openai = new OpenAI({ apiKey: OPENAI_API_KEY });
 
 
-async function getWebSearchSummary(query: string, vectorResults: any[]): Promise<string> {
+async function getWebSearchSummary(query: string, searchResults: any): Promise<string> {
   try {
     const completion = await openai.chat.completions.create({
       model: "gpt-4o-mini-search-preview",
@@ -41,7 +38,7 @@ You have two inputs:
 Always prioritize vector data. Never make things up.
 
 ### Vector Database Results:
-${JSON.stringify(vectorResults, null, 2)}
+${JSON.stringify(searchResults, null, 2)}
           `.trim(),
         },
         {
@@ -68,40 +65,6 @@ async function getEmbedding(text: string): Promise<number[]> {
   });
   return response.data[0].embedding;
 }
-
-async function searchSimilarQuestions(query: string, limit: number = 5): Promise<any[]> {
-  const client = await pool.connect();
-  try {
-    const embedding = await getEmbedding(query);
-
-    const { rows } = await client.query(
-      `
-      SELECT id, question, golden_truth,
-             1 - (question_embedding <#> $1::vector) AS question_score,
-             1 - (golden_truth_embedding <#> $1::vector) AS truth_score
-      FROM questions
-      ORDER BY LEAST(
-        question_embedding <#> $1::vector,
-        golden_truth_embedding <#> $1::vector
-      ) ASC
-      LIMIT $2;
-      `,
-      [`[${embedding.join(',')}]`, limit]);
-
-    return rows.map((r: { id: any; question: any; golden_truth: any; question_score: number; truth_score: number; }) => ({
-      id: r.id,
-      question: r.question,
-      golden_truth: r.golden_truth,
-      score: Math.max(r.question_score, r.truth_score),
-    }));
-  } catch (err) {
-    console.error('❌ Vector search error:', err);
-    return [];
-  } finally {
-    client.release();
-  }
-}
-
 
 // 🚀 **Fetch Search Results from Google & Vector DB**
 async function fetchSearchResults(
@@ -182,7 +145,7 @@ async function fetchSearchResults(
 
 
 // 🚀 **Call OpenAI Chat Model**
-async function getAiResponse(conversation: any[], searchResults: any, vectorContext: any[], webSearchSummary: string, query: string) {
+async function getAiResponse(conversation: any[], searchResults: any, webSearchSummary: string, query: string) {
   console.log("🤖 Sending request to OpenAI...");
 
   const systemMessage = {
@@ -275,7 +238,6 @@ export async function POST(req: NextRequest) {
     );
 
     console.log("🔎 Fetching search results...");
-    const vectorContext = await searchSimilarQuestions(query, 5);
     const searchResults = await fetchSearchResults(
       query,
       resultsLimit,
@@ -286,8 +248,14 @@ export async function POST(req: NextRequest) {
     );
 
     console.log("🤖 Calling OpenAI...");
-    const webSearchSummary = await getWebSearchSummary(query, vectorContext);
-    const aiResponse = await getAiResponse(conversation, searchResults, vectorContext, webSearchSummary, query);
+
+    const top2VectorResults = {
+      vectorResults: searchResults.vectorResults.slice(0, 2),
+      googleResults: [], // explicitly exclude Google results
+    };
+
+    const webSearchSummary = await getWebSearchSummary(query, top2VectorResults);
+    const aiResponse = await getAiResponse(conversation, searchResults, webSearchSummary, query);
 
     console.log("✅ Returning response to client.");
     return NextResponse.json({ searchResults, aiResponse }, { status: 200 });
@@ -297,7 +265,3 @@ export async function POST(req: NextRequest) {
   }
 }
 
-
-
-// ## 🧠 Similar Questions from Vector Search
-// ${vectorContext.map((item, i) => `### Q${i + 1}: ${item.question}\nGolden Truth: ${item.golden_truth}`).join('\n\n')}
