@@ -1,9 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import OpenAI from "openai";
+import { Pool } from 'pg';
 
 // Load API keys from environment variables
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 const BASE_URL = process.env.BASE_URL || "http://localhost:3001";
+const pool = new Pool({
+  connectionString: process.env.INTERSIGHTAI_DOC_USE_CASE_DATABASE_URL,
+});
 
 if (!OPENAI_API_KEY) {
   throw new Error("❌ Missing OpenAI API key in .env file");
@@ -14,6 +18,46 @@ const openai = new OpenAI({ apiKey: OPENAI_API_KEY });
 
 
 
+async function getEmbedding(text: string): Promise<number[]> {
+  const response = await openai.embeddings.create({
+    input: text,
+    model: 'text-embedding-3-small',
+  });
+  return response.data[0].embedding;
+}
+
+async function searchSimilarQuestions(query: string, limit: number = 5): Promise<any[]> {
+  const client = await pool.connect();
+  try {
+    const embedding = await getEmbedding(query);
+
+    const { rows } = await client.query(
+      `
+      SELECT id, question, golden_truth,
+             1 - (question_embedding <#> $1::vector) AS question_score,
+             1 - (golden_truth_embedding <#> $1::vector) AS truth_score
+      FROM questions
+      ORDER BY LEAST(
+        question_embedding <#> $1::vector,
+        golden_truth_embedding <#> $1::vector
+      ) ASC
+      LIMIT $2;
+      `,
+      [`[${embedding.join(',')}]`, limit]);
+
+    return rows.map((r: { id: any; question: any; golden_truth: any; question_score: number; truth_score: number; }) => ({
+      id: r.id,
+      question: r.question,
+      golden_truth: r.golden_truth,
+      score: Math.max(r.question_score, r.truth_score),
+    }));
+  } catch (err) {
+    console.error('❌ Vector search error:', err);
+    return [];
+  } finally {
+    client.release();
+  }
+}
 
 
 // 🚀 **Fetch Search Results from Google & Vector DB**
@@ -58,7 +102,6 @@ async function fetchSearchResults(
     async function safeParseJson(response: Response, label: string) {
       try {
         const text = await response.text();
-        console.log(`📦 Raw response from ${label}:\n`, text);
         return JSON.parse(text);
       } catch (err) {
         console.warn(`⚠️ Failed to parse JSON from ${label}.`);
@@ -85,8 +128,6 @@ async function fetchSearchResults(
     }
 
 
-    console.log(`✅ Google Results (${googleResults.length})`);
-    console.log(`✅ Vector Results (${vectorResults?.length ?? 0})`);
 
     return { googleResults, vectorResults };
   } catch (error) {
@@ -96,7 +137,7 @@ async function fetchSearchResults(
 }
 
 // 🚀 **Call OpenAI Chat Model**
-async function getAiResponse(conversation: any[], searchResults: any) {
+async function getAiResponse(conversation: any[], searchResults: any, vectorContext: any[], query: string) {
   console.log("🤖 Sending request to OpenAI...");
 
   const systemMessage = {
@@ -119,16 +160,21 @@ async function getAiResponse(conversation: any[], searchResults: any) {
    - If a query is off-topic, respond:  
      *"I can only assist with Cisco Intersight topics."*
 
-### 🔎 **Search Results**
+## 🧠 Similar Questions from Vector Search
+${vectorContext.map((item, i) => `### Q${i + 1}: ${item.question}\nGolden Truth: ${item.golden_truth}`).join('\n\n')}
+
+## 🔎 Additional Search Results
 - **Google Search Results:** ${JSON.stringify(searchResults.googleResults, null, 2)}
 - **Vector Database Results:** ${JSON.stringify(searchResults.vectorResults, null, 2)}
 
-Now provide a well-structured answer.`,
+Now provide a well-structured answer to the following query: "${query}"`,
   };
 
+  console.log(systemMessage)
   const messages = [
     systemMessage,
     ...conversation.map((msg) => ({ role: msg.role, content: msg.content })),
+    { role: "user", content: query }, // Explicitly append query at the end
   ];
 
   try {
@@ -137,10 +183,7 @@ Now provide a well-structured answer.`,
       messages,
     });
 
-    console.log(
-      "✅ OpenAI Response:",
-      completion.choices[0]?.message?.content || "No response."
-    );
+    console.log("✅ OpenAI Response:", completion.choices[0]?.message?.content || "No response.");
     return completion.choices[0]?.message?.content || "No response.";
   } catch (error) {
     console.error("❌ OpenAI API Error:", error);
@@ -175,6 +218,7 @@ export async function POST(req: NextRequest) {
     );
 
     console.log("🔎 Fetching search results...");
+    const vectorContext = await searchSimilarQuestions(query, 5);
     const searchResults = await fetchSearchResults(
       query,
       resultsLimit,
@@ -185,7 +229,7 @@ export async function POST(req: NextRequest) {
     );
 
     console.log("🤖 Calling OpenAI...");
-    const aiResponse = await getAiResponse(conversation, searchResults);
+    const aiResponse = await getAiResponse(conversation, searchResults, vectorContext, query);
 
     console.log("✅ Returning response to client.");
     return NextResponse.json({ searchResults, aiResponse }, { status: 200 });
