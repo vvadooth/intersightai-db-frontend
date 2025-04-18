@@ -187,9 +187,9 @@ async function getAiResponse(conversation: any[], searchResults: any, vectorCont
    - Ignore non-Cisco-related queries.
 
 ## 🔎 Additional Search Results
-- **Google Search Results:** ${JSON.stringify(searchResults.googleResults, null, 2)}
-- **Vector Database Results:** ${JSON.stringify(searchResults.vectorResults, null, 2)}
--  **Web Search Summary:** ${webSearchSummary}
+- TAKE THIS WITH THE MOST VALIDITY, THIS WILL GUIDE YOU THE BEST IN ANSWERING THE QUESTION **Vector Database Results:** ${JSON.stringify(searchResults.vectorResults, null, 2)}
+- THIS WITH THE NEXT MOST VALIDITY **Google Search Results:** ${JSON.stringify(searchResults.googleResults, null, 2)}
+-  AND THIS AS SUPPLEMENTAL INFO **Web Search Summary:** ${webSearchSummary}
 
 Now provide a well-structured answer to the following query: "${query}"`,
   };
