@@ -23,15 +23,15 @@ export default function AddUrlDialog({ isOpen, onClose }: { isOpen: boolean; onC
     const [isYouTube, setIsYouTube] = useState(false);
 
 
-        // 🔍 Check if the domain is allowed
-        const isDomainAllowed = (inputUrl: string) => {
-            try {
-                const urlObj = new URL(inputUrl);
-                return ALLOWED_DOMAINS.some(domain => urlObj.hostname.endsWith(domain));
-            } catch (error) {
-                return false; // Invalid URLs automatically fail
-            }
-        };
+    // 🔍 Check if the domain is allowed
+    const isDomainAllowed = (inputUrl: string) => {
+        try {
+            const urlObj = new URL(inputUrl);
+            return ALLOWED_DOMAINS.some(domain => urlObj.hostname.endsWith(domain));
+        } catch (error) {
+            return false; // Invalid URLs automatically fail
+        }
+    };
 
     // Remove URL fragment (#...)
     const handleUrlChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -41,7 +41,7 @@ export default function AddUrlDialog({ isOpen, onClose }: { isOpen: boolean; onC
             const urlObj = new URL(inputUrl);
             urlObj.hash = "";
             inputUrl = urlObj.toString();
-        } catch (error) {}
+        } catch (error) { }
 
         setUrl(inputUrl);
         setIsValidUrl(validateUrl(inputUrl) || inputUrl === "");
@@ -135,7 +135,19 @@ export default function AddUrlDialog({ isOpen, onClose }: { isOpen: boolean; onC
             setExtractedData(data);
         } catch (error) {
             console.error("❌ Error processing URL:", error);
-            toast.error("Failed to process URL.");
+            toast.error("We couldn not extract content automatically. Please paste it manually below.");
+
+            // Send fallback empty structure so they can manually fill it
+            setExtractedData({
+                source: url,
+                content: "", // Let user paste manually
+                metadata: {
+                    title: title || "Untitled",
+                    size: 0,
+                    file_type: isYouTube ? "video" : "url",
+                    confidentiality: "public", // Default option
+                },
+            });
         } finally {
             setLoading(false);
         }
@@ -181,8 +193,8 @@ export default function AddUrlDialog({ isOpen, onClose }: { isOpen: boolean; onC
                         />
                         {!isValidUrl && <p className="text-red-500 text-xs font-medium">⚠️ Invalid URL format</p>}
 
-{/* Title Input Field (Hidden for YouTube) */}
-{!isYouTube && (
+                        {/* Title Input Field (Hidden for YouTube) */}
+                        {!isYouTube && (
                             <>
                                 <label htmlFor="title-input" className="block text-sm font-medium text-gray-700">
                                     Title <span className="text-red-500">*</span>
@@ -201,9 +213,38 @@ export default function AddUrlDialog({ isOpen, onClose }: { isOpen: boolean; onC
                         )}
 
                         {/* Buttons */}
-                        <div className="flex justify-end space-x-2">
-                        <Button type="submit" disabled={!url || !isValidUrl || (loading && !isYouTube)} className="flex items-center">
-                        {loading ? (
+                        <div className="flex justify-between items-center pt-2">
+                            {/* Skip to Manual Button */}
+                            <Button
+                                type="button"
+                                variant="outline"
+                                disabled={
+                                    !isValidUrl || !url.trim() || (!isYouTube && !title.trim())
+                                }
+                                onClick={() => {
+                                    setExtractedData({
+                                        source: url,
+                                        content: "",
+                                        metadata: {
+                                            title: title || "Untitled",
+                                            size: 0,
+                                            file_type: isYouTube ? "video" : "url",
+                                            confidentiality: "public",
+                                        },
+                                    });
+                                    toast.info("Manual paste mode activated.");
+                                }}
+                            >
+                                Paste Manually
+                            </Button>
+
+                            {/* Submit Button */}
+                            <Button
+                                type="submit"
+                                disabled={!url || !isValidUrl || (loading && !isYouTube)}
+                                className="flex items-center"
+                            >
+                                {loading ? (
                                     <>
                                         <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                                         Processing...

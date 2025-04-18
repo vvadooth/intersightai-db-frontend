@@ -3,158 +3,149 @@
 import { useState, useEffect } from "react";
 import { Dialog, DialogOverlay, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 
 export default function PDFDetailsDialog({
-    isOpen,
-    onClose,
-    data,
+  isOpen,
+  onClose,
+  data,
 }: {
-    isOpen: boolean;
-    onClose: () => void;
-    data: {
-        source: string;
-        content: string;
-        metadata: {
-            title: string;
-            size: number;
-            file_type: string;
-            confidentiality: string;
-        };
+  isOpen: boolean;
+  onClose: () => void;
+  data: {
+    source: string;
+    content: string;
+    metadata: {
+      title: string;
+      size: number;
+      file_type: string;
+      confidentiality: string;
     };
+  };
 }) {
-    const [isSubmitting, setIsSubmitting] = useState(false);
-    const [exitDialog, setExitDialog] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [exitDialog, setExitDialog] = useState(false);
 
-    // Prevent closing or reloading the page during submission
-    useEffect(() => {
-        const handleBeforeUnload = (event: BeforeUnloadEvent) => {
-            if (isSubmitting) {
-                event.preventDefault();
-                setExitDialog(true);
-            }
-        };
+  const [editedTitle, setEditedTitle] = useState(data.metadata.title);
+  const [editedContent, setEditedContent] = useState(data.content);
+  const [editedConfidentiality, setEditedConfidentiality] = useState(data.metadata.confidentiality);
 
-        window.addEventListener("beforeunload", handleBeforeUnload);
-
-        return () => {
-            window.removeEventListener("beforeunload", handleBeforeUnload);
-        };
-    }, [isSubmitting]);
-
-    const handleSubmit = async () => {
-        setIsSubmitting(true);
-        console.log("📤 Starting document submission...");
-
-        try {
-            console.log("🔍 Sending request to API: /api/documents");
-            console.log("📝 Request Body:", {
-                source: data.source,
-                content: data.content,
-                metadata: data.metadata,
-            });
-
-            const response = await fetch("/api/documents", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                },
-                body: JSON.stringify({
-                    source: data.source,
-                    content: data.content,
-                    metadata: data.metadata,
-                }),
-            });
-
-            console.log("📡 Response Received. Status:", response.status);
-
-            if (!response.ok) {
-                throw new Error(`❌ Failed to submit document. Status: ${response.status} - ${response.statusText}`);
-            }
-
-            const responseData = await response.json();
-            console.log("✅ Submission Successful. Response:", responseData);
-
-            // ✅ Close all open modals & reset state
-            setExitDialog(false);
-            onClose(); // Close the details modal
-            window.dispatchEvent(new Event("resetUploadState")); // Notify the upload modal to close
-
-        } catch (error) {
-            console.error("❌ Error submitting document:", error);
-        } finally {
-            setIsSubmitting(false);
-            console.log("📌 Submission process finished.");
-        }
+  useEffect(() => {
+    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+      if (isSubmitting) {
+        event.preventDefault();
+        setExitDialog(true);
+      }
     };
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [isSubmitting]);
 
-    // Handle closing the modal (prevent closing if submitting)
-    const handleDialogClose = () => {
-        if (isSubmitting) {
-            setExitDialog(true);
-        } else {
-            onClose();
-        }
-    };
+  const handleSubmit = async () => {
+    setIsSubmitting(true);
 
-    return (
-        <>
-            <Dialog open={isOpen} onOpenChange={handleDialogClose}>
-                <DialogOverlay />
-                <DialogContent className="max-w-lg p-6 bg-white rounded-lg shadow-lg">
-                    <DialogTitle>
-                        <VisuallyHidden>PDF Details</VisuallyHidden>
-                    </DialogTitle>
+    try {
+      const response = await fetch("/api/documents", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          source: data.source,
+          content: editedContent,
+          metadata: {
+            title: editedTitle,
+            size: editedContent.length,
+            file_type: data.metadata.file_type,
+            confidentiality: editedConfidentiality,
+          },
+        }),
+      });
 
-                    <div className="space-y-4">
-                        <h2 className="text-xl font-bold max-w-md break-words">
-                            {data.metadata.title}</h2>
-                        <p className="text-sm text-gray-600">File Type: {data.metadata.file_type}</p>
-                        <p className="text-sm text-gray-600">Size: {(data.metadata.size / 1024).toFixed(2)} KB</p>
-                        <p className="text-sm text-gray-600">Confidentiality: {data.metadata.confidentiality}</p>
+      if (!response.ok) {
+        throw new Error(`Submission failed: ${response.status}`);
+      }
 
-                        <div className="border-t pt-4">
-                            <h3 className="font-semibold">Extracted Content</h3>
-                            <p className="text-sm text-gray-800 h-32 overflow-auto">
-                                {data.content || "No content extracted."}
-                            </p>
-                        </div>
+      onClose();
+      window.dispatchEvent(new Event("resetUploadState"));
+    } catch (error) {
+      console.error("❌ Submission error:", error);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
-                        <div className="border-t pt-4">
-                            <h3 className="font-semibold">Source</h3>
-                            <a href={data.source} target="_blank" rel="noopener noreferrer" className="text-blue-500 underline">
-                                View PDF
-                            </a>
-                        </div>
+  const handleDialogClose = () => {
+    if (isSubmitting) {
+      setExitDialog(true);
+    } else {
+      onClose();
+    }
+  };
 
-                        <div className="flex justify-end">
-                            <Button onClick={handleSubmit} disabled={isSubmitting}>
-                                {isSubmitting ? "Submitting..." : "Submit"}
-                            </Button>
-                        </div>
-                    </div>
-                </DialogContent>
-            </Dialog>
+  return (
+    <>
+      <Dialog open={isOpen} onOpenChange={handleDialogClose}>
+        <DialogOverlay />
+        <DialogContent className="max-w-lg p-6 bg-white rounded-lg shadow-lg">
+          <DialogTitle>
+            <VisuallyHidden>PDF Details</VisuallyHidden>
+          </DialogTitle>
 
-            {/* Exit Confirmation Dialog */}
-            <Dialog open={exitDialog} onOpenChange={() => setExitDialog(false)}>
-                <DialogOverlay />
-                <DialogContent className="max-w-sm p-6 bg-white rounded-lg shadow-lg">
-                    <DialogTitle className="text-red-600 font-bold">Warning</DialogTitle>
-                    <p>Submission is in progress. Are you sure you want to exit? You will lose all progress.</p>
-                    <div className="flex justify-end gap-2 mt-4">
-                        <Button variant="outline" onClick={() => setExitDialog(false)}>
-                            Stay
-                        </Button>
-                        <Button variant="destructive" onClick={() => {
-                            setExitDialog(false);
-                            onClose();
-                        }}>
-                            Exit
-                        </Button>
-                    </div>
-                </DialogContent>
-            </Dialog>
-        </>
-    );
+          <div className="space-y-4">
+            <label className="text-sm font-medium text-gray-700">Title</label>
+            <Input
+              value={editedTitle}
+              onChange={(e) => setEditedTitle(e.target.value)}
+              className="border rounded-md p-2 w-full"
+            />
+
+            <label className="text-sm font-medium text-gray-700">Confidentiality</label>
+            <select
+              value={editedConfidentiality}
+              onChange={(e) => setEditedConfidentiality(e.target.value)}
+              className="border p-2 rounded-md w-full"
+            >
+              <option value="public">Public</option>
+              <option value="internal">Internal</option>
+              <option value="confidential">Confidential</option>
+            </select>
+
+            <label className="text-sm font-medium text-gray-700">Extracted or Manual Content</label>
+            <Textarea
+              value={editedContent}
+              onChange={(e) => setEditedContent(e.target.value)}
+              className="w-full h-32 p-2 border rounded-md resize-none"
+            />
+
+            <div>
+              <label className="text-sm font-medium text-gray-700">Source</label>
+              <p className="text-sm break-words">{data.source}</p>
+            </div>
+
+            <div className="flex justify-end">
+              <Button onClick={handleSubmit} disabled={isSubmitting || !editedContent.trim() || !editedTitle.trim()}>
+                {isSubmitting ? "Submitting..." : "Submit"}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Exit Confirmation */}
+      <Dialog open={exitDialog} onOpenChange={() => setExitDialog(false)}>
+        <DialogOverlay />
+        <DialogContent className="max-w-sm p-6 bg-white rounded-lg shadow-lg">
+          <DialogTitle className="text-red-600 font-bold">Warning</DialogTitle>
+          <p>Submission is in progress. Are you sure you want to exit? You will lose all progress.</p>
+          <div className="flex justify-end gap-2 mt-4">
+            <Button variant="outline" onClick={() => setExitDialog(false)}>Stay</Button>
+            <Button variant="destructive" onClick={() => { setExitDialog(false); onClose(); }}>
+              Exit
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </>
+  );
 }

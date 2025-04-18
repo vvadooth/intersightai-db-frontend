@@ -62,29 +62,36 @@ const extractTextFromPDF = async (fileKey: string) => {
   let extractedText = "";
   let isProcessing = true;
   let attempts = 0;
-  const maxAttempts = 20; // Set a limit to prevent infinite loops
-  const pollingInterval = 7000; // Increase polling interval (reduce API calls)
-
+  const maxAttempts = 40;
+  const pollingInterval = 8000;
+  
   while (isProcessing && attempts < maxAttempts) {
     attempts++;
     console.log(`🔍 Polling Textract Job (Attempt ${attempts})...`);
     await new Promise((resolve) => setTimeout(resolve, pollingInterval));
-
+  
     const getResult = new GetDocumentTextDetectionCommand({ JobId });
     const response = await textractClient.send(getResult);
-
+  
+    if (!response.JobStatus) {
+      console.warn("⚠️ No JobStatus returned. Skipping this attempt...");
+      continue;
+    }
+  
+    console.log(`🟠 Textract job status: ${response.JobStatus}`);
+  
     if (response.JobStatus === "SUCCEEDED") {
       extractedText = (response.Blocks || [])
         .filter((block) => block.BlockType === "LINE" && block.Text)
         .map((block) => block.Text as string)
         .join(" ");
-
+      console.log(`✅ Extraction complete: ${extractedText.length} chars`);
       isProcessing = false;
-      console.log(`✅ Textract extraction complete: ${extractedText.length} characters extracted.`);
     } else if (response.JobStatus === "FAILED") {
       throw new Error("❌ Textract failed to process the document");
     }
   }
+  
 
   if (attempts === maxAttempts) {
     throw new Error("⏳ Textract took too long to process. Aborting...");
