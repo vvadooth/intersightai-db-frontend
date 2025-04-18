@@ -158,8 +158,6 @@ async function getAiResponse(conversation: any[], searchResults: any, vectorCont
 
 2. **Stay on topic**:
    - Ignore non-Cisco-related queries.
-   - If a query is off-topic, respond:  
-     *"I can only assist with Cisco Intersight topics."*
 
 ## 🧠 Similar Questions from Vector Search
 ${vectorContext.map((item, i) => `### Q${i + 1}: ${item.question}\nGolden Truth: ${item.golden_truth}`).join('\n\n')}
