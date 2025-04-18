@@ -148,6 +148,7 @@ async function getAiResponse(conversation: any[], searchResults: any, vectorCont
 - Reference **topics related to Cisco Intersight**.
 - **Never include profanity or inappropriate content**.
 - **Relate everything to Intersight**.
+- Do not give any fake or mock links, only refer to actual links/sources and/or subject matter expert answers which will be the ones from Similar Questions from Vector Search.
 
 ## 🛠 **Response Formatting**
 1. Use **Markdown**:
