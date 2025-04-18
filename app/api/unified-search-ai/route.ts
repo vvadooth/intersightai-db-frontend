@@ -17,14 +17,32 @@ if (!OPENAI_API_KEY) {
 const openai = new OpenAI({ apiKey: OPENAI_API_KEY });
 
 
-async function getWebSearchSummary(query: string): Promise<string> {
+async function getWebSearchSummary(query: string, vectorResults: any[]): Promise<string> {
   try {
     const completion = await openai.chat.completions.create({
       model: "gpt-4o-mini-search-preview",
       messages: [
         {
           role: "system",
-          content: `You are a Cisco Intersight specialist. Answer user questions by using live web search results and focusing strictly on Cisco Intersight-related content. Ignore anything unrelated to Cisco Intersight.`,
+          content: `
+You are a Cisco Intersight specialist.
+
+You have two inputs:
+1. A user query
+2. A set of reliable Vector Database Results from Cisco Intersight subject matter experts
+
+### Your Instructions:
+- First, **try to answer the query using only the Vector Database Results**.
+- If you **cannot find a sufficient answer**, then and only then:
+  - Use **live web search** to find a highly credible and verifiable answer.
+  - **Cite the source** exactly if you use anything from the web.
+- If neither vector nor web has a trustworthy answer, reply: "There is no confirmed Cisco documentation matching this question."
+
+Always prioritize vector data. Never make things up.
+
+### Vector Database Results:
+${JSON.stringify(vectorResults, null, 2)}
+          `.trim(),
         },
         {
           role: "user",
@@ -32,14 +50,16 @@ async function getWebSearchSummary(query: string): Promise<string> {
         },
       ],
     });
-    console.log(completion.choices[0]?.message?.content || "No web search summary available.")
-    return completion.choices[0]?.message?.content || "No web search summary available.";
-    
+
+    const response = completion.choices[0]?.message?.content || "No web search summary available.";
+    console.log("🌐 Web Search Summary:", response);
+    return response;
   } catch (err) {
     console.error("❌ Web Search Summary Error:", err);
     return "Web search failed or returned no content.";
   }
 }
+
 
 async function getEmbedding(text: string): Promise<number[]> {
   const response = await openai.embeddings.create({
@@ -266,7 +286,7 @@ export async function POST(req: NextRequest) {
     );
 
     console.log("🤖 Calling OpenAI...");
-    const webSearchSummary = await getWebSearchSummary(query);
+    const webSearchSummary = await getWebSearchSummary(query, vectorContext);
     const aiResponse = await getAiResponse(conversation, searchResults, vectorContext, webSearchSummary, query);
 
     console.log("✅ Returning response to client.");
