@@ -17,6 +17,29 @@ if (!OPENAI_API_KEY) {
 const openai = new OpenAI({ apiKey: OPENAI_API_KEY });
 
 
+async function getWebSearchSummary(query: string): Promise<string> {
+  try {
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4o-mini-search-preview",
+      messages: [
+        {
+          role: "system",
+          content: `You are a Cisco Intersight specialist. Answer user questions by using live web search results and focusing strictly on Cisco Intersight-related content. Ignore anything unrelated to Cisco Intersight.`,
+        },
+        {
+          role: "user",
+          content: query,
+        },
+      ],
+    });
+    console.log(completion.choices[0]?.message?.content || "No web search summary available.")
+    return completion.choices[0]?.message?.content || "No web search summary available.";
+    
+  } catch (err) {
+    console.error("❌ Web Search Summary Error:", err);
+    return "Web search failed or returned no content.";
+  }
+}
 
 async function getEmbedding(text: string): Promise<number[]> {
   const response = await openai.embeddings.create({
@@ -136,8 +159,10 @@ async function fetchSearchResults(
   }
 }
 
+
+
 // 🚀 **Call OpenAI Chat Model**
-async function getAiResponse(conversation: any[], searchResults: any, vectorContext: any[], query: string) {
+async function getAiResponse(conversation: any[], searchResults: any, vectorContext: any[], webSearchSummary: string, query: string) {
   console.log("🤖 Sending request to OpenAI...");
 
   const systemMessage = {
@@ -164,6 +189,7 @@ async function getAiResponse(conversation: any[], searchResults: any, vectorCont
 ## 🔎 Additional Search Results
 - **Google Search Results:** ${JSON.stringify(searchResults.googleResults, null, 2)}
 - **Vector Database Results:** ${JSON.stringify(searchResults.vectorResults, null, 2)}
+-  **Web Search Summary:** ${webSearchSummary}
 
 Now provide a well-structured answer to the following query: "${query}"`,
   };
@@ -177,7 +203,7 @@ Now provide a well-structured answer to the following query: "${query}"`,
 
   try {
     const completion = await openai.chat.completions.create({
-      model: "gpt-4o",
+      model: "gpt-4o-mini",
       messages,
     });
 
@@ -227,7 +253,8 @@ export async function POST(req: NextRequest) {
     );
 
     console.log("🤖 Calling OpenAI...");
-    const aiResponse = await getAiResponse(conversation, searchResults, vectorContext, query);
+    const webSearchSummary = await getWebSearchSummary(query);
+    const aiResponse = await getAiResponse(conversation, searchResults, vectorContext, webSearchSummary, query);
 
     console.log("✅ Returning response to client.");
     return NextResponse.json({ searchResults, aiResponse }, { status: 200 });
