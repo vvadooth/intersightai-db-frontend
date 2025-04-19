@@ -33,6 +33,7 @@ You have two inputs:
 - First, **try to answer the query using only the Vector Database Results**.
 - If you **cannot find a sufficient answer**, then the question is probably ill-formed or doesn't make sense.
 - If doesn't have a trustworthy answer, reply: "There is no confirmed Cisco documentation matching this question."
+- Do not make anything up. If none of the sources mention the details or help answer the question, say that with an explanation why. But if you can come up with something using the sources provided, do try to. Do not go off trying to come up with innacurate information though.
 
 Always prioritize vector data. Never make things up.
 
@@ -153,7 +154,7 @@ async function fetchSearchResults(
 
 
 // 🚀 **Call OpenAI Chat Model**
-async function getAiResponse(conversation: any[], searchResults: any, query: string) {
+async function getAiResponse(conversation: any[], searchResults: any, webSearchSummary: string, query: string) {
   console.log("🤖 Sending request to OpenAI...");
 
   const systemMessage = {
@@ -165,7 +166,7 @@ async function getAiResponse(conversation: any[], searchResults: any, query: str
   2. **If the Vector Results do not contain enough information**, you may **supplement with Google Search Results**, but still prioritize vector-based answers.
   3. **Only if both the Vector and Google Results fail**, you may refer to the **Web Search Summary** — treat this as **supplementary** and **never build your entire answer based solely on it**.
   
-  Do not make anything up. If none of the sources mention the details or help answer the question, say that with an explanation why. Do not go off trying to come up with an answer yourself with no sources backing you up.
+  Do not make anything up. If none of the sources help answer the question, say "I don't know" instead of guessing.
   
   ### 🛠 Markdown Response Format
   - Use **headings** (e.g., \`## Overview of Intersight Policies\`)
@@ -187,15 +188,14 @@ async function getAiResponse(conversation: any[], searchResults: any, query: str
   **Google Search Results** (fallback if vector is insufficient):
   ${JSON.stringify(searchResults.googleResults, null, 2)}
   
+  **Web Search Summary** (use only if others fail or for context expansion, sometimes this will be wrong, if there is no mention of any of these topics or answers in the vector database results then this is probably incorrect):
+  ${webSearchSummary}
+  
   ---
-
-  Quote directly from the chunk. Cite properly. THIS IS VERY IMPORTANT  
-
   
   Now generate a detailed, markdown-formatted response to the following query:
   
   "${query}"`,
-  
   };
   
 
@@ -263,8 +263,8 @@ export async function POST(req: NextRequest) {
       googleResults: [], // explicitly exclude Google results
     };
 
-    // const webSearchSummary = await getWebSearchSummary(query, top2VectorResults);
-    const aiResponse = await getAiResponse(conversation, searchResults, query);
+    const webSearchSummary = await getWebSearchSummary(query, top2VectorResults);
+    const aiResponse = await getAiResponse(conversation, searchResults, webSearchSummary, query);
 
     console.log("✅ Returning response to client.");
     return NextResponse.json({ searchResults, aiResponse }, { status: 200 });
@@ -274,7 +274,3 @@ export async function POST(req: NextRequest) {
   }
 }
 
-
-
-//   **Web Search Summary** (use only if others fail or for context expansion, sometimes this will be wrong, if there is no mention of any of these topics or answers in the vector database results then this is probably incorrect):
-//  ${webSearchSummary}
