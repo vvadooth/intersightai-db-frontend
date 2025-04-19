@@ -35,7 +35,7 @@ You have two inputs:
 - If doesn't have a trustworthy answer, reply: "There is no confirmed Cisco documentation matching this question."
 - Do not make anything up. If none of the sources mention the details or help answer the question, say that with an explanation why. But if you can come up with something using the sources provided, do try to. Do not go off trying to come up with innacurate information though.
 
-Always prioritize vector data. Never make things up.
+Always prioritize vector data. Never make things up. 
 
 ### Vector Database Results:
 ${JSON.stringify(searchResults, null, 2)}
@@ -179,6 +179,8 @@ async function getAiResponse(conversation: any[], searchResults: any, webSearchS
   - Do **not** include any profanity or inappropriate content
   
   ---
+
+  
   
   ### 🔍 Search Result Context
   
@@ -193,6 +195,8 @@ async function getAiResponse(conversation: any[], searchResults: any, webSearchS
   
   ---
   
+  If there is no mention of the specific details for the query in the vector results, it's probably a misinformed question. In that case, properly explain that and provide alternatives or clarifications. This is even if Web Search Summary is giving a certain answer.
+
   Now generate a detailed, markdown-formatted response to the following query:
   
   "${query}"`,
@@ -208,7 +212,7 @@ async function getAiResponse(conversation: any[], searchResults: any, webSearchS
 
   try {
     const completion = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
+      model: "gpt-4.1",
       messages,
     });
 
