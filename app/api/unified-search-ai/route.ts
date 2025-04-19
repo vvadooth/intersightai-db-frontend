@@ -165,7 +165,7 @@ async function getAiResponse(conversation: any[], searchResults: any, query: str
   2. **If the Vector Results do not contain enough information**, you may **supplement with Google Search Results**, but still prioritize vector-based answers.
   3. **Only if both the Vector and Google Results fail**, you may refer to the **Web Search Summary** — treat this as **supplementary** and **never build your entire answer based solely on it**.
   
-  Do not make anything up. If none of the sources mention the details or help answer the question, say that with an explanation why.
+  Do not make anything up. If none of the sources mention the details or help answer the question, say that with an explanation why. Do not go off trying to come up with an answer yourself with no sources backing you up.
   
   ### 🛠 Markdown Response Format
   - Use **headings** (e.g., \`## Overview of Intersight Policies\`)
