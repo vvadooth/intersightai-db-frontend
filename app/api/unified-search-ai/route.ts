@@ -197,6 +197,8 @@ async function getAiResponse(conversation: any[], searchResults: any, webSearchS
   
   If there is no mention of the specific details for the query in the vector results, it's probably a misinformed question. In that case, properly explain that and provide alternatives or clarifications. This is even if Web Search Summary is giving a certain answer.
 
+  Try to be exact as possible when answering the query. Start by answering the question as specifically as possible as well.
+
   Now generate a detailed, markdown-formatted response to the following query:
   
   "${query}"`,
