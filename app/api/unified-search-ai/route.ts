@@ -153,7 +153,7 @@ async function fetchSearchResults(
 
 
 // 🚀 **Call OpenAI Chat Model**
-async function getAiResponse(conversation: any[], searchResults: any, webSearchSummary: string, query: string) {
+async function getAiResponse(conversation: any[], searchResults: any, query: string) {
   console.log("🤖 Sending request to OpenAI...");
 
   const systemMessage = {
@@ -259,8 +259,8 @@ export async function POST(req: NextRequest) {
       googleResults: [], // explicitly exclude Google results
     };
 
-    const webSearchSummary = await getWebSearchSummary(query, top2VectorResults);
-    const aiResponse = await getAiResponse(conversation, searchResults, webSearchSummary, query);
+    // const webSearchSummary = await getWebSearchSummary(query, top2VectorResults);
+    const aiResponse = await getAiResponse(conversation, searchResults, query);
 
     console.log("✅ Returning response to client.");
     return NextResponse.json({ searchResults, aiResponse }, { status: 200 });
