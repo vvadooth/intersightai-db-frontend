@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import OpenAI from "openai";
+import { ChatCompletionMessageParam } from "openai/resources/chat";
 
 // Load API keys from environment variables
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
@@ -14,14 +15,14 @@ if (!OPENAI_API_KEY) {
 const openai = new OpenAI({ apiKey: OPENAI_API_KEY });
 
 
+
+
 async function getWebSearchSummary(query: string, searchResults: any): Promise<string> {
   try {
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4o-mini-search-preview",
-      messages: [
-        {
-          role: "system",
-          content: `
+    const messages: ChatCompletionMessageParam[] = [
+      {
+        role: "system",
+        content: `
 You are a Cisco Intersight specialist.
 
 You have two inputs:
@@ -30,23 +31,29 @@ You have two inputs:
 
 ### Your Instructions:
 - First, **try to answer the query using only the Vector Database Results**.
-- If you **cannot find a sufficient answer**, then and only then:
-  - Use **live web search** to find a highly credible and verifiable answer.
-  - **Cite the source** exactly if you use anything from the web.
-- If neither vector nor web has a trustworthy answer, reply: "There is no confirmed Cisco documentation matching this question."
+- If you **cannot find a sufficient answer**, then the question is probably ill-formed or doesn't make sense.
+- If doesn't have a trustworthy answer, reply: "There is no confirmed Cisco documentation matching this question."
 
 Always prioritize vector data. Never make things up.
 
 ### Vector Database Results:
 ${JSON.stringify(searchResults, null, 2)}
-          `.trim(),
-        },
-        {
-          role: "user",
-          content: query,
-        },
-      ],
-    });
+        `.trim(),
+      },
+      {
+        role: "user",
+        content: query,
+      },
+    ];
+
+    const payload = {
+      model: "gpt-4o-mini-search-preview",
+      messages,
+    };
+
+    console.log("📤 OpenAI Payload:", JSON.stringify(payload, null, 2));
+
+    const completion = await openai.chat.completions.create(payload);
 
     const response = completion.choices[0]?.message?.content || "No web search summary available.";
     console.log("🌐 Web Search Summary:", response);
@@ -56,6 +63,7 @@ ${JSON.stringify(searchResults, null, 2)}
     return "Web search failed or returned no content.";
   }
 }
+
 
 
 async function getEmbedding(text: string): Promise<number[]> {
@@ -179,9 +187,6 @@ async function getAiResponse(conversation: any[], searchResults: any, webSearchS
   **Google Search Results** (fallback if vector is insufficient):
   ${JSON.stringify(searchResults.googleResults, null, 2)}
   
-  **Web Search Summary** (use only if others fail or for context expansion, sometimes this will be wrong, if there is no mention of any of these topics or answers in the vector database results then this is probably incorrect):
-  ${webSearchSummary}
-  
   ---
   
   Now generate a detailed, markdown-formatted response to the following query:
@@ -265,3 +270,7 @@ export async function POST(req: NextRequest) {
   }
 }
 
+
+
+//   **Web Search Summary** (use only if others fail or for context expansion, sometimes this will be wrong, if there is no mention of any of these topics or answers in the vector database results then this is probably incorrect):
+//  ${webSearchSummary}
